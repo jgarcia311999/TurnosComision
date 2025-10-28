@@ -181,7 +181,6 @@ export default function Home() {
   const diaRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const diasConTurnos = [...turnosNormalizados]
-    .filter((d) => parseFecha(d.fecha) >= hoy) // solo mostrar días futuros o actuales
     .sort((a, b) => parseFecha(a.fecha).getTime() - parseFecha(b.fecha).getTime())
     .map((d) => {
       const fechaObj = parseFecha(d.fecha);
