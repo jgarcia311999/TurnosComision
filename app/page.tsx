@@ -117,8 +117,50 @@ export default function Home() {
   const turnosNormalizados = turnos && Array.isArray(turnos)
     ? normalizarTurnos(turnos).sort((a, b) => a.fecha.localeCompare(b.fecha))
     : [];
-  const primerDiaConTurnos = turnosNormalizados.length > 0 ? turnosNormalizados[0].fecha : new Date().toISOString().split("T")[0];
-  const [diaSeleccionado, setDiaSeleccionado] = useState<string>(primerDiaConTurnos);
+  // Detectar el próximo día con evento (igual o después de hoy)
+  const hoy = new Date();
+
+  // Función robusta que interpreta fechas "D/M", "D/M/YY" o "YYYY-MM-DD"
+  const parseFecha = (fechaStr: string): Date => {
+    // Si es formato D/M[/YYYY]
+    if (fechaStr.includes("/")) {
+      const partes = fechaStr.split("/").map(Number);
+      const [dia, mes, year] = partes;
+      const currentYear = new Date().getFullYear();
+      const finalYear = year || currentYear;
+
+      // Creamos una fecha clara con formato ISO
+      const posibleFecha = new Date(finalYear, mes - 1, dia);
+
+      // Si la fecha ya pasó este año → usamos el siguiente
+      if (posibleFecha < new Date()) {
+        posibleFecha.setFullYear(finalYear + 1);
+      }
+
+      // Convertimos a YYYY-MM-DD y la devolvemos como objeto Date
+      const iso = posibleFecha.toISOString().split("T")[0];
+      return new Date(iso);
+    }
+
+    // Si ya viene en formato ISO
+    return new Date(fechaStr);
+  };
+
+  // Ordenar cronológicamente los turnos normalizados
+  const turnosOrdenados = [...turnosNormalizados].sort(
+    (a, b) => parseFecha(a.fecha).getTime() - parseFecha(b.fecha).getTime()
+  );
+
+  // Encontrar el próximo día con evento
+  const proximoDia =
+    turnosOrdenados
+      .map((d) => ({ ...d, fechaDate: parseFecha(d.fecha) }))
+      .filter((d) => d.fechaDate >= hoy)
+      .sort((a, b) => a.fechaDate.getTime() - b.fechaDate.getTime())[0]?.fecha ||
+    turnosOrdenados[0]?.fecha ||
+    new Date().toISOString().split("T")[0];
+
+  const [diaSeleccionado, setDiaSeleccionado] = useState<string>(proximoDia);
   const [spacerWidth, setSpacerWidth] = useState<number>(0);
   useEffect(() => {
     const updateSpacer = () => {
@@ -138,11 +180,17 @@ export default function Home() {
   const contenedorRef = useRef<HTMLDivElement | null>(null);
   const diaRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const diasConTurnos = turnosNormalizados.map((d) => ({
-    fecha: d.fecha,
-    numero: d.fecha.split("-")[2],
-    nombreDia: new Date(d.fecha).toLocaleString("es-ES", { weekday: "short" }),
-  }));
+  const diasConTurnos = [...turnosNormalizados]
+    .filter((d) => parseFecha(d.fecha) >= hoy) // solo mostrar días futuros o actuales
+    .sort((a, b) => parseFecha(a.fecha).getTime() - parseFecha(b.fecha).getTime())
+    .map((d) => {
+      const fechaObj = parseFecha(d.fecha);
+      return {
+        fecha: d.fecha,
+        numero: fechaObj.getDate().toString().padStart(2, "0"),
+        nombreDia: fechaObj.toLocaleString("es-ES", { weekday: "short" }),
+      };
+    });
 
   const turnosDia = turnosNormalizados.find((d) => d.fecha === diaSeleccionado)?.turnos || [];
 
@@ -179,6 +227,81 @@ export default function Home() {
   }, [diaSeleccionado]);
 
   if (!turnos) return null;
+
+  // Función para exportar los turnos a un Excel, con una hoja por mes
+  const handleDescargarExcel = async () => {
+    try {
+      const XLSX = await import("xlsx");
+
+      interface Turno {
+        fecha: string;
+        horaInicio: string;
+        horaFin: string;
+        actividad: string;
+        personas: string[] | Record<string, string[]>;
+        turnos?: Turno[];
+      }
+
+      interface TurnoPlano {
+        Fecha: string;
+        "Hora inicio": string;
+        "Hora fin": string;
+        Actividad: string;
+        Personas: string;
+      }
+
+      // Obtener los turnos normalizados
+      const turnosNormalizados = normalizarTurnos(turnos);
+
+      // Función auxiliar para obtener nombre del mes
+      const obtenerMes = (fecha: string): string => {
+        const date = new Date(fecha.includes("/") ? fecha.split("/").reverse().join("-") : fecha);
+        return date.toLocaleString("es-ES", { month: "long", year: "numeric" });
+      };
+
+      // Agrupar turnos por mes
+      const turnosPorMes: Record<string, TurnoPlano[]> = {};
+
+      turnosNormalizados.forEach((dia) => {
+        const mes = obtenerMes(dia.fecha);
+        if (!turnosPorMes[mes]) turnosPorMes[mes] = [];
+
+        dia.turnos.forEach((turno) => {
+          let personasTexto = "";
+          if (Array.isArray(turno.personas)) {
+            personasTexto = turno.personas.join(", ");
+          } else if (typeof turno.personas === "object" && turno.personas !== null) {
+            personasTexto = Object.entries(turno.personas)
+              .map(([clave, lista]) => `${clave}: ${(lista || []).join(", ")}`)
+              .join(" | ");
+          }
+
+          turnosPorMes[mes].push({
+            Fecha: dia.fecha,
+            "Hora inicio": turno.horaInicio,
+            "Hora fin": turno.horaFin,
+            Actividad: turno.actividad,
+            Personas: personasTexto,
+          });
+        });
+      });
+
+      // Crear libro con una hoja por mes
+      const libro = XLSX.utils.book_new();
+
+      Object.entries(turnosPorMes).forEach(([mes, datos]) => {
+        const hoja = XLSX.utils.json_to_sheet(datos);
+        const nombreHoja = mes.charAt(0).toUpperCase() + mes.slice(1);
+        XLSX.utils.book_append_sheet(libro, hoja, nombreHoja);
+      });
+
+      // Descargar archivo Excel
+      XLSX.writeFile(libro, "turnos_comision.xlsx");
+    } catch (error) {
+      console.error("Error al generar Excel:", error);
+      alert("❌ Error al generar el archivo Excel.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F9F9FB] text-[#333] flex flex-col font-sans">
@@ -242,6 +365,12 @@ export default function Home() {
             className="text-left hover:text-[#7161EF] transition"
           >
             🔍 Filtrar Turnos
+          </button>
+          <button
+            onClick={handleDescargarExcel}
+            className="text-left hover:text-[#7161EF] transition"
+          >
+            📥 Descargar Excel
           </button>
         </nav>
       </div>

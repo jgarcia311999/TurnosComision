@@ -13,7 +13,9 @@ export default function AddTurnoPage() {
 
   const [personasList, setPersonasList] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [turnosPendientes, setTurnosPendientes] = useState<typeof formData[]>([]);
+  const [turnosPendientes, setTurnosPendientes] = useState<(typeof formData)[]>(
+    []
+  );
   const [mostrarMenu, setMostrarMenu] = useState(false);
 
   useEffect(() => {
@@ -22,6 +24,82 @@ export default function AddTurnoPage() {
       .then((data) => setPersonasList(data))
       .catch((err) => console.error("Error al cargar personas:", err));
   }, []);
+
+  // Función para exportar los turnos a un Excel, con una hoja por mes
+  const handleDescargarExcel = async () => {
+    try {
+      const XLSX = await import("xlsx");
+
+      interface Turno {
+        fecha: string;
+        horaInicio: string;
+        horaFin: string;
+        actividad: string;
+        personas: string[] | Record<string, string[]>;
+        turnos?: Turno[];
+      }
+
+      interface TurnoPlano {
+        Fecha: string;
+        "Hora inicio": string;
+        "Hora fin": string;
+        Actividad: string;
+        Personas: string;
+      }
+
+      // Obtener turnos existentes
+      const res = await fetch("/api/turnos");
+      const turnosNormalizados: Turno[] = await res.json();
+
+      // Función auxiliar para obtener nombre del mes
+      const obtenerMes = (fecha: string): string => {
+        const date = new Date(fecha.includes("/") ? fecha.split("/").reverse().join("-") : fecha);
+        return date.toLocaleString("es-ES", { month: "long", year: "numeric" });
+      };
+
+      // Agrupar turnos por mes
+      const turnosPorMes: Record<string, TurnoPlano[]> = {};
+
+      turnosNormalizados.forEach((dia) => {
+        const mes = obtenerMes(dia.fecha);
+        if (!turnosPorMes[mes]) turnosPorMes[mes] = [];
+
+        (dia.turnos ?? [dia]).forEach((turno) => {
+          let personasTexto = "";
+          if (Array.isArray(turno.personas)) {
+            personasTexto = turno.personas.join(", ");
+          } else if (typeof turno.personas === "object" && turno.personas !== null) {
+            personasTexto = Object.entries(turno.personas)
+              .map(([clave, lista]) => `${clave}: ${(lista || []).join(", ")}`)
+              .join(" | ");
+          }
+
+          turnosPorMes[mes].push({
+            Fecha: dia.fecha,
+            "Hora inicio": turno.horaInicio,
+            "Hora fin": turno.horaFin,
+            Actividad: turno.actividad,
+            Personas: personasTexto,
+          });
+        });
+      });
+
+      // Crear libro con una hoja por mes
+      const libro = XLSX.utils.book_new();
+
+      Object.entries(turnosPorMes).forEach(([mes, datos]) => {
+        const hoja = XLSX.utils.json_to_sheet(datos);
+        const nombreHoja = mes.charAt(0).toUpperCase() + mes.slice(1);
+        XLSX.utils.book_append_sheet(libro, hoja, nombreHoja);
+      });
+
+      // Descargar archivo Excel
+      XLSX.writeFile(libro, "turnos_comision.xlsx");
+    } catch (error) {
+      console.error("Error al generar Excel:", error);
+      alert("❌ Error al generar el archivo Excel.");
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -71,7 +149,7 @@ export default function AddTurnoPage() {
     // Calcular duración del turno actual en minutos
     const [hInicio, mInicio] = formData.horaInicio.split(":").map(Number);
     const [hFin, mFin] = formData.horaFin.split(":").map(Number);
-    let duracion = (hFin * 60 + mFin) - (hInicio * 60 + mInicio);
+    let duracion = hFin * 60 + mFin - (hInicio * 60 + mInicio);
     if (duracion <= 0) duracion += 24 * 60; // si pasa medianoche
 
     // Nueva hora inicio = horaFin anterior
@@ -83,10 +161,18 @@ export default function AddTurnoPage() {
       const totalMin = h * 60 + m + minutos;
       const nuevaH = Math.floor(totalMin / 60) % 24;
       const nuevaM = totalMin % 60;
-      return { nuevaHora: `${nuevaH.toString().padStart(2, "0")}:${nuevaM.toString().padStart(2, "0")}`, pasaMedianoche: totalMin >= 24 * 60 };
+      return {
+        nuevaHora: `${nuevaH.toString().padStart(2, "0")}:${nuevaM
+          .toString()
+          .padStart(2, "0")}`,
+        pasaMedianoche: totalMin >= 24 * 60,
+      };
     };
 
-    const { nuevaHora, pasaMedianoche } = sumarMinutos(nuevaHoraInicio, duracion);
+    const { nuevaHora, pasaMedianoche } = sumarMinutos(
+      nuevaHoraInicio,
+      duracion
+    );
 
     // Calcular nueva fecha (si pasa de medianoche)
     const nuevaFecha = (() => {
@@ -188,6 +274,12 @@ export default function AddTurnoPage() {
           >
             ➕ Añadir Turno
           </Link>
+          <button
+            onClick={handleDescargarExcel}
+            className="text-left hover:text-[#7161EF] transition"
+          >
+            📥 Descargar Excel
+          </button>
         </nav>
       </div>
 
@@ -207,7 +299,9 @@ export default function AddTurnoPage() {
         >
           {/* Fecha */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Fecha</label>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">
+              Fecha
+            </label>
             <input
               type="date"
               name="fecha"
@@ -219,7 +313,9 @@ export default function AddTurnoPage() {
 
           {/* Hora inicio */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Hora inicio</label>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">
+              Hora inicio
+            </label>
             <input
               type="time"
               name="horaInicio"
@@ -231,7 +327,9 @@ export default function AddTurnoPage() {
 
           {/* Hora fin */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Hora fin</label>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">
+              Hora fin
+            </label>
             <input
               type="time"
               name="horaFin"
@@ -243,7 +341,9 @@ export default function AddTurnoPage() {
 
           {/* Actividad */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Actividad</label>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">
+              Actividad
+            </label>
             <select
               name="actividad"
               value={formData.actividad}
@@ -260,7 +360,9 @@ export default function AddTurnoPage() {
 
           {/* Personas */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Personas</label>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">
+              Personas
+            </label>
             <input
               type="text"
               placeholder="Buscar persona..."
@@ -318,15 +420,22 @@ export default function AddTurnoPage() {
           {/* Lista de turnos pendientes */}
           {turnosPendientes.length > 0 && (
             <div className="mt-6 border-t border-[#E6E6EB] pt-4">
-              <h2 className="text-lg font-semibold mb-2 text-[#7161EF]">Turnos pendientes:</h2>
+              <h2 className="text-lg font-semibold mb-2 text-[#7161EF]">
+                Turnos pendientes:
+              </h2>
               <ul className="space-y-2 text-sm">
                 {turnosPendientes.map((t, i) => (
-                  <li key={i} className="bg-[#F9F9FB] border border-[#E6E6EB] p-3 rounded-lg">
+                  <li
+                    key={i}
+                    className="bg-[#F9F9FB] border border-[#E6E6EB] p-3 rounded-lg"
+                  >
                     <div className="font-medium text-[#333]">{t.actividad}</div>
                     <div className="text-[#777] text-xs">
                       {t.fecha} | {t.horaInicio} – {t.horaFin}
                     </div>
-                    <div className="text-[#555] text-xs mt-1">{t.personas.join(", ")}</div>
+                    <div className="text-[#555] text-xs mt-1">
+                      {t.personas.join(", ")}
+                    </div>
                   </li>
                 ))}
               </ul>
