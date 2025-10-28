@@ -4,99 +4,90 @@
     "horaInicio": "12:00",
     "horaFin": "13:00",
     "actividad": "Barra",
-    "personas": [
-      "Ana",
-      "Juanjo"
-    ]
+    "personas": ["Ana", "Juanjo"]
   },
   {
     "fecha": "2025-12-12",
     "horaInicio": "13:00",
     "horaFin": "14:00",
     "actividad": "Barra",
-    "personas": [
-      "Luca",
-      "Leti"
-    ]
+    "personas": ["Luca", "Leti"]
   },
   {
     "fecha": "2025-12-12",
     "horaInicio": "14:00",
     "horaFin": "15:00",
     "actividad": "Barra",
-    "personas": [
-      "Abril",
-      "Martina"
-    ]
+    "personas": ["Abril", "Martina"]
   },
   {
-    "fecha": "4/10",
-    "turnos": [
-      {
-        "personas": ["Natalia", "Juanjo", "Petit"],
-        "horaInicio": "21:00",
-        "horaFin": "00:00",
-        "actividad": "Barra"
-      },
-      {
-        "personas": ["Jesús", "Carla"],
-        "horaInicio": "00:00",
-        "horaFin": "01:30",
-        "actividad": "Barra"
-      },
-      {
-        "personas": ["Luca", "Martina"],
-        "horaInicio": "01:30",
-        "horaFin": "03:00",
-        "actividad": "Barra"
-      },
-      {
-        "personas": ["Ana", "Abril"],
-        "horaInicio": "03:00",
-        "horaFin": "04:30",
-        "actividad": "Barra"
-      },
-      {
-        "personas": ["Todos"],
-        "horaInicio": "04:30",
-        "horaFin": "",
-        "actividad": "Cierre"
-      }
-    ]
+    "fecha": "2025-10-04",
+    "horaInicio": "21:00",
+    "horaFin": "00:00",
+    "actividad": "Barra",
+    "personas": ["Natalia", "Juanjo", "Petit"]
   },
   {
-    "fecha": "1/11",
-    "turnos": [
-      {
-        "personas": ["Javi", "Ana"],
-        "horaInicio": "00:00",
-        "horaFin": "01:30",
-        "actividad": "Barra"
-      },
-      {
-        "personas": ["Petit", "Natalia"],
-        "horaInicio": "00:00",
-        "horaFin": "01:30",
-        "actividad": "Puerta"
-      },
-      {
-        "personas": ["Jesús", "Juanjo"],
-        "horaInicio": "01:30",
-        "horaFin": "03:00",
-        "actividad": "Barra"
-      },
-      {
-        "personas": ["Leti", "Martina"],
-        "horaInicio": "01:30",
-        "horaFin": "03:00",
-        "actividad": "Puerta"
-      },
-      {
-        "personas": ["Luca", "Jama"],
-        "horaInicio": "03:00",
-        "horaFin": "04:30",
-        "actividad": "Barra"
-      }
-    ]
+    "fecha": "2025-10-05",
+    "horaInicio": "00:00",
+    "horaFin": "01:30",
+    "actividad": "Barra",
+    "personas": ["Jesús", "Carla"]
+  },
+  {
+    "fecha": "2025-10-05",
+    "horaInicio": "01:30",
+    "horaFin": "03:00",
+    "actividad": "Barra",
+    "personas": ["Luca", "Martina"]
+  },
+  {
+    "fecha": "2025-10-05",
+    "horaInicio": "03:00",
+    "horaFin": "04:30",
+    "actividad": "Barra",
+    "personas": ["Ana", "Abril"]
+  },
+  {
+    "fecha": "2025-10-05",
+    "horaInicio": "04:30",
+    "horaFin": "",
+    "actividad": "Cierre",
+    "personas": ["Todos"]
+  },
+  {
+    "fecha": "2025-11-01",
+    "horaInicio": "00:00",
+    "horaFin": "01:30",
+    "actividad": "Barra",
+    "personas": ["Javi", "Ana"]
+  },
+  {
+    "fecha": "2025-11-01",
+    "horaInicio": "00:00",
+    "horaFin": "01:30",
+    "actividad": "Puerta",
+    "personas": ["Petit", "Natalia"]
+  },
+  {
+    "fecha": "2025-11-01",
+    "horaInicio": "01:30",
+    "horaFin": "03:00",
+    "actividad": "Barra",
+    "personas": ["Jesús", "Juanjo"]
+  },
+  {
+    "fecha": "2025-11-01",
+    "horaInicio": "01:30",
+    "horaFin": "03:00",
+    "actividad": "Puerta",
+    "personas": ["Leti", "Martina"]
+  },
+  {
+    "fecha": "2025-11-01",
+    "horaInicio": "03:00",
+    "horaFin": "04:30",
+    "actividad": "Barra",
+    "personas": ["Luca", "Jama"]
   }
 ]

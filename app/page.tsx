@@ -38,6 +38,32 @@ export default function Home() {
       .catch((err) => console.error("Error al cargar personas:", err));
   }, []);
 
+  // Normalizar la estructura de los datos para aceptar ambos formatos
+  const normalizarTurnos = (data: (Dia | (Omit<Turno, "turnos"> & { fecha: string }))[]): Dia[] => {
+    const agrupados: Record<string, Turno[]> = {};
+
+    data.forEach((item) => {
+      if ("turnos" in item) {
+        // Formato con lista de turnos
+        agrupados[item.fecha] = item.turnos;
+      } else {
+        // Formato individual, convertir a turno dentro del mismo día
+        if (!agrupados[item.fecha]) agrupados[item.fecha] = [];
+        agrupados[item.fecha].push({
+          horaInicio: item.horaInicio,
+          horaFin: item.horaFin,
+          actividad: item.actividad,
+          personas: item.personas,
+        });
+      }
+    });
+
+    return Object.entries(agrupados).map(([fecha, turnos]) => ({
+      fecha,
+      turnos,
+    }));
+  };
+
   const toggleDia = (fecha: string) => {
     setAbiertos((prev) =>
       prev.includes(fecha) ? prev.filter((f) => f !== fecha) : [...prev, fecha]
@@ -54,6 +80,27 @@ export default function Home() {
         return barra.includes(selectedPerson) || puerta.includes(selectedPerson);
       }
     });
+  };
+
+  const formatearFecha = (fecha: string) => {
+    const meses = [
+      "enero",
+      "febrero",
+      "marzo",
+      "abril",
+      "mayo",
+      "junio",
+      "julio",
+      "agosto",
+      "septiembre",
+      "octubre",
+      "noviembre",
+      "diciembre"
+    ];
+
+    const [year, month, day] = fecha.split("-");
+    const mesNombre = meses[parseInt(month, 10) - 1] || "";
+    return `${day} de ${mesNombre} del ${year}`;
   };
 
   return (
@@ -87,9 +134,9 @@ export default function Home() {
       </div>
 
       <div className="w-full max-w-2xl">
-        {turnos.map((dia) => {
+        {normalizarTurnos(turnos).map((dia) => {
           const isOpen = abiertos.includes(dia.fecha);
-          const turnosFiltrados = filtrarTurnos(dia);
+          const turnosFiltrados = filtrarTurnos(dia) || [];
           if (turnosFiltrados.length === 0) return null;
 
           return (
@@ -101,7 +148,7 @@ export default function Home() {
                 onClick={() => toggleDia(dia.fecha)}
                 className="w-full flex justify-between items-center px-4 py-3 text-left font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
               >
-                <span>{dia.fecha}</span>
+                <span>{formatearFecha(dia.fecha)}</span>
                 <span
                   className={`transform transition-transform ${
                     isOpen ? "rotate-90" : ""
