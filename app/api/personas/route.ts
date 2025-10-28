@@ -18,6 +18,7 @@ export async function GET() {
     "Jama",
     "Pablo",
     "Jesús",
+    "TODOS",
   ];
 
   return NextResponse.json(personas);
