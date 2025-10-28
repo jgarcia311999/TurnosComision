@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export default function AddTurnoPage() {
   const [formData, setFormData] = useState({
@@ -13,6 +14,7 @@ export default function AddTurnoPage() {
   const [personasList, setPersonasList] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [turnosPendientes, setTurnosPendientes] = useState<typeof formData[]>([]);
+  const [mostrarMenu, setMostrarMenu] = useState(false);
 
   useEffect(() => {
     fetch("/api/personas")
@@ -139,149 +141,199 @@ export default function AddTurnoPage() {
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black text-black dark:text-white px-4 py-8">
-      <form
-        onSubmit={handleAddTurnoPendiente}
-        className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 space-y-5"
-      >
-        <h1 className="text-2xl font-bold text-center mb-4">Añadir Turno</h1>
-
-        {/* Fecha */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Fecha</label>
-          <input
-            type="date"
-            name="fecha"
-            value={formData.fecha}
-            onChange={handleChange}
-            className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-3 text-base"
-          />
-        </div>
-
-        {/* Hora inicio */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Hora inicio</label>
-          <input
-            type="time"
-            name="horaInicio"
-            value={formData.horaInicio}
-            onChange={handleChange}
-            className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-3 text-base"
-          />
-        </div>
-
-        {/* Hora fin */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Hora fin</label>
-          <input
-            type="time"
-            name="horaFin"
-            value={formData.horaFin}
-            onChange={handleChange}
-            className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-3 text-base"
-          />
-        </div>
-
-        {/* Actividad */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Actividad</label>
-          <select
-            name="actividad"
-            value={formData.actividad}
-            onChange={handleChange}
-            className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-3 text-base"
-          >
-            <option value="">Seleccionar actividad</option>
-            <option value="Barra">Barra</option>
-            <option value="Puerta">Puerta</option>
-            <option value="Cierre">Cierre</option>
-            <option value="Supervisión">Supervisión</option>
-          </select>
-        </div>
-
-        {/* Personas */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Personas</label>
-          <input
-            type="text"
-            placeholder="Buscar persona..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full mb-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-base"
-          />
-
-          <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto rounded-md border border-zinc-300 dark:border-zinc-700 p-2 bg-zinc-50 dark:bg-zinc-800">
-            {personasFiltradas.map((persona) => {
-              const selected = formData.personas.includes(persona);
-              const yaAsignada = turnosPendientes.some((t) =>
-                t.personas.includes(persona)
-              );
-              return (
-                <button
-                  type="button"
-                  key={persona}
-                  onClick={() => togglePersona(persona)}
-                  disabled={yaAsignada}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                    selected
-                      ? "bg-blue-600 text-white"
-                      : yaAsignada
-                      ? "bg-zinc-400 text-white cursor-not-allowed"
-                      : "bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white"
-                  }`}
-                >
-                  {persona}
-                </button>
-              );
-            })}
-          </div> 
-
-          {formData.personas.length > 0 && (
-            <p className="text-xs text-zinc-500 mt-1">
-              Seleccionadas: {formData.personas.join(", ")}
-            </p>
-          )}
-        </div>
-
-        {/* Botones */}
-        <div className="space-y-3">
+    <div className="min-h-screen bg-[#F9F9FB] text-[#333] flex flex-col font-sans">
+      {/* Header con menú */}
+      <header className="sticky top-0 z-30 bg-[#F9F9FB] py-3">
+        <div className="flex items-center justify-center relative">
           <button
-            type="submit"
-            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md py-3 text-lg transition"
+            onClick={() => setMostrarMenu((prev) => !prev)}
+            className="absolute left-4 text-[#7161EF] text-xl"
           >
-            Guardar turno (pendiente)
+            ☰
           </button>
-          {turnosPendientes.length > 0 && (
-            <button
-              type="button"
-              onClick={handleConfirmarTurnos}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md py-3 text-lg transition"
-            >
-              Confirmar todos los turnos ({turnosPendientes.length})
-            </button>
-          )}
+          <h1 className="text-sm font-semibold bg-white text-[#333] px-4 py-1 rounded-full shadow-sm border border-[#E6E6EB]">
+            Añadir Turno
+          </h1>
+        </div>
+      </header>
+
+      {/* Menú lateral */}
+      <div
+        className={`fixed top-0 left-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-40 ${
+          mostrarMenu ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-[#E6E6EB]">
+          <h2 className="text-[#7161EF] font-semibold text-lg">Menú</h2>
+          <button
+            onClick={() => setMostrarMenu(false)}
+            className="text-[#7161EF] text-xl"
+          >
+            ✕
+          </button>
         </div>
 
-        {/* Lista de turnos pendientes */}
-        {turnosPendientes.length > 0 && (
-          <div className="mt-6 border-t border-zinc-300 dark:border-zinc-700 pt-4">
-            <h2 className="text-lg font-semibold mb-2">Turnos pendientes:</h2>
-            <ul className="space-y-2 text-sm">
-              {turnosPendientes.map((t, i) => (
-                <li key={i} className="bg-zinc-100 dark:bg-zinc-800 p-2 rounded-md">
-                  <div className="font-medium">{t.actividad}</div>
-                  <div className="text-zinc-500 text-xs">
-                    {t.fecha} | {t.horaInicio} – {t.horaFin}
-                  </div>
-                  <div className="text-zinc-600 text-xs">
-                    {t.personas.join(", ")}
-                  </div>
-                </li>
-              ))}
-            </ul>
+        <nav className="flex flex-col p-4 gap-3 text-[#333]">
+          <Link
+            href="/"
+            onClick={() => setMostrarMenu(false)}
+            className="hover:text-[#7161EF] transition"
+          >
+            🏠 Inicio
+          </Link>
+          <Link
+            href="/add-turno"
+            onClick={() => setMostrarMenu(false)}
+            className="hover:text-[#7161EF] transition"
+          >
+            ➕ Añadir Turno
+          </Link>
+        </nav>
+      </div>
+
+      {/* Fondo oscuro al abrir menú */}
+      {mostrarMenu && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 z-30"
+          onClick={() => setMostrarMenu(false)}
+        />
+      )}
+
+      {/* Formulario */}
+      <main className="flex-1 px-6 pb-10 mt-6">
+        <form
+          onSubmit={handleAddTurnoPendiente}
+          className="bg-white border border-[#E6E6EB] rounded-2xl shadow-sm p-6 flex flex-col gap-5"
+        >
+          {/* Fecha */}
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Fecha</label>
+            <input
+              type="date"
+              name="fecha"
+              value={formData.fecha}
+              onChange={handleChange}
+              className="w-full bg-[#F9F9FB] border border-[#E6E6EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#7161EF]"
+            />
           </div>
-        )}
-      </form>
+
+          {/* Hora inicio */}
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Hora inicio</label>
+            <input
+              type="time"
+              name="horaInicio"
+              value={formData.horaInicio}
+              onChange={handleChange}
+              className="w-full bg-[#F9F9FB] border border-[#E6E6EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#7161EF]"
+            />
+          </div>
+
+          {/* Hora fin */}
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Hora fin</label>
+            <input
+              type="time"
+              name="horaFin"
+              value={formData.horaFin}
+              onChange={handleChange}
+              className="w-full bg-[#F9F9FB] border border-[#E6E6EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#7161EF]"
+            />
+          </div>
+
+          {/* Actividad */}
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Actividad</label>
+            <select
+              name="actividad"
+              value={formData.actividad}
+              onChange={handleChange}
+              className="w-full bg-[#F9F9FB] border border-[#E6E6EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#7161EF]"
+            >
+              <option value="">Seleccionar actividad</option>
+              <option value="Barra">Barra</option>
+              <option value="Puerta">Puerta</option>
+              <option value="Cierre">Cierre</option>
+              <option value="Supervisión">Supervisión</option>
+            </select>
+          </div>
+
+          {/* Personas */}
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">Personas</label>
+            <input
+              type="text"
+              placeholder="Buscar persona..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full mb-2 bg-[#F9F9FB] border border-[#E6E6EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#7161EF]"
+            />
+
+            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto rounded-md border border-[#E6E6EB] p-2 bg-[#F9F9FB]">
+              {personasFiltradas.map((persona) => {
+                const selected = formData.personas.includes(persona);
+                const yaAsignada = turnosPendientes.some((t) =>
+                  t.personas.includes(persona)
+                );
+                return (
+                  <button
+                    type="button"
+                    key={persona}
+                    onClick={() => togglePersona(persona)}
+                    disabled={yaAsignada}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                      selected
+                        ? "bg-[#7161EF] text-white"
+                        : yaAsignada
+                        ? "bg-zinc-400 text-white cursor-not-allowed"
+                        : "bg-white text-[#333] border border-[#E6E6EB]"
+                    }`}
+                  >
+                    {persona}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Botones */}
+          <div className="space-y-3 mt-2">
+            <button
+              type="submit"
+              className="w-full bg-[#7161EF] hover:bg-[#5B50CC] text-white font-semibold rounded-lg py-3 text-lg transition"
+            >
+              Guardar turno (pendiente)
+            </button>
+            {turnosPendientes.length > 0 && (
+              <button
+                type="button"
+                onClick={handleConfirmarTurnos}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg py-3 text-lg transition"
+              >
+                Confirmar todos los turnos ({turnosPendientes.length})
+              </button>
+            )}
+          </div>
+
+          {/* Lista de turnos pendientes */}
+          {turnosPendientes.length > 0 && (
+            <div className="mt-6 border-t border-[#E6E6EB] pt-4">
+              <h2 className="text-lg font-semibold mb-2 text-[#7161EF]">Turnos pendientes:</h2>
+              <ul className="space-y-2 text-sm">
+                {turnosPendientes.map((t, i) => (
+                  <li key={i} className="bg-[#F9F9FB] border border-[#E6E6EB] p-3 rounded-lg">
+                    <div className="font-medium text-[#333]">{t.actividad}</div>
+                    <div className="text-[#777] text-xs">
+                      {t.fecha} | {t.horaInicio} – {t.horaFin}
+                    </div>
+                    <div className="text-[#555] text-xs mt-1">{t.personas.join(", ")}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </form>
+      </main>
     </div>
   );
 }

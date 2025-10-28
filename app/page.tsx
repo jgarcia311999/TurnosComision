@@ -26,6 +26,7 @@ export default function Home() {
   const [selectedPerson, setSelectedPerson] = useState<string>("");
   const [abiertos, setAbiertos] = useState<string[]>([]);
   const [mostrarFiltro, setMostrarFiltro] = useState<boolean>(false);
+  const [mostrarMenu, setMostrarMenu] = useState<boolean>(false);
 
   useEffect(() => {
     fetch("/api/turnos")
@@ -118,6 +119,22 @@ export default function Home() {
     : [];
   const primerDiaConTurnos = turnosNormalizados.length > 0 ? turnosNormalizados[0].fecha : new Date().toISOString().split("T")[0];
   const [diaSeleccionado, setDiaSeleccionado] = useState<string>(primerDiaConTurnos);
+  const [spacerWidth, setSpacerWidth] = useState<number>(0);
+  useEffect(() => {
+    const updateSpacer = () => {
+      const cont = contenedorRef.current;
+      if (!cont) return;
+      // Tomamos el primer botón como referencia para el ancho
+      const sampleBtn = cont.querySelector("button") as HTMLButtonElement | null;
+      const btnWidth = sampleBtn ? sampleBtn.offsetWidth : 70; // fallback
+      const width = Math.max(0, cont.offsetWidth / 2 - btnWidth / 2);
+      setSpacerWidth(width);
+    };
+
+    updateSpacer();
+    window.addEventListener("resize", updateSpacer);
+    return () => window.removeEventListener("resize", updateSpacer);
+  }, []);
   const contenedorRef = useRef<HTMLDivElement | null>(null);
   const diaRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -148,7 +165,15 @@ export default function Home() {
       const offsetLeft = boton.offsetLeft;
       const botonWidth = boton.offsetWidth;
       const contenedorWidth = contenedor.offsetWidth;
-      const scrollTo = offsetLeft - contenedorWidth / 2 + botonWidth / 2;
+      const scrollMax = contenedor.scrollWidth - contenedorWidth;
+
+      // Calcula el desplazamiento ideal centrado
+      let scrollTo = offsetLeft - contenedorWidth / 2 + botonWidth / 2;
+
+      // Asegura que incluso los primeros o últimos se centren visualmente
+      if (scrollTo < 0) scrollTo = 0;
+      if (scrollTo > scrollMax) scrollTo = scrollMax;
+
       contenedor.scrollTo({ left: scrollTo, behavior: "smooth" });
     }
   }, [diaSeleccionado]);
@@ -158,11 +183,16 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#F9F9FB] text-[#333] flex flex-col font-sans">
       {/* Barra superior */}
-      <header className="sticky top-0 z-30 bg-[#F9F9FB] py-3 shadow-sm">
+      <header className="sticky top-0 z-30 bg-[#F9F9FB] py-3">
         <div className="flex items-center justify-center relative">
-          <button className="absolute left-4 text-[#7161EF] text-xl">☰</button>
+          <button
+            onClick={() => setMostrarMenu((prev) => !prev)}
+            className="absolute left-4 text-[#7161EF] text-xl"
+          >
+            ☰
+          </button>
           <h1 className="text-sm font-semibold bg-white text-[#333] px-4 py-1 rounded-full shadow-sm border border-[#E6E6EB] capitalize">
-            {new Date().toLocaleString("es-ES", { month: "long" })}
+            {new Date(diaSeleccionado).toLocaleString("es-ES", { month: "long" })}
           </h1>
           <button
             onClick={() => setMostrarFiltro((prev) => !prev)}
@@ -172,6 +202,57 @@ export default function Home() {
           </button>
         </div>
       </header>
+
+      {/* Menú lateral */}
+      <div
+        className={`fixed top-0 left-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-40 ${
+          mostrarMenu ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-[#E6E6EB]">
+          <h2 className="text-[#7161EF] font-semibold text-lg">Menú</h2>
+          <button
+            onClick={() => setMostrarMenu(false)}
+            className="text-[#7161EF] text-xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        <nav className="flex flex-col p-4 gap-3 text-[#333]">
+          <Link
+            href="/"
+            onClick={() => setMostrarMenu(false)}
+            className="hover:text-[#7161EF] transition"
+          >
+            🏠 Inicio
+          </Link>
+          <Link
+            href="/add-turno"
+            onClick={() => setMostrarMenu(false)}
+            className="hover:text-[#7161EF] transition"
+          >
+            ➕ Añadir Turno
+          </Link>
+          <button
+            onClick={() => {
+              setMostrarFiltro(true);
+              setMostrarMenu(false);
+            }}
+            className="text-left hover:text-[#7161EF] transition"
+          >
+            🔍 Filtrar Turnos
+          </button>
+        </nav>
+      </div>
+
+      {/* Fondo semitransparente cuando el menú está abierto */}
+      {mostrarMenu && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 z-30"
+          onClick={() => setMostrarMenu(false)}
+        />
+      )}
 
       {mostrarFiltro && (
         <div className="px-5 pb-2 mt-3">
@@ -193,9 +274,10 @@ export default function Home() {
       {/* Selector de días */}
       <div
         ref={contenedorRef}
-        className="flex overflow-x-auto gap-3 px-4 py-4 no-scrollbar"
+        className="flex overflow-x-auto gap-3 px-8 py-4 no-scrollbar"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
+        <div style={{ minWidth: spacerWidth }} aria-hidden="true" />
         {diasConTurnos.map((dia) => (
           <button
             key={dia.fecha}
@@ -213,6 +295,7 @@ export default function Home() {
             <span className="text-[10px] opacity-60">{new Date(dia.fecha).toLocaleString("es-ES", { month: "short" })}</span>
           </button>
         ))}
+        <div style={{ minWidth: spacerWidth }} aria-hidden="true" />
       </div>
 
       {/* Lista de turnos del día */}
@@ -258,13 +341,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* Botón flotante */}
-      <Link
-        href="/add-turno"
-        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-[#7161EF] text-white rounded-full p-5 shadow-lg text-3xl hover:bg-[#5B50CC] active:scale-95 transition-all duration-200"
-      >
-        +
-      </Link>
 
       <style jsx>{`
         .no-scrollbar::-webkit-scrollbar {
