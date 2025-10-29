@@ -151,16 +151,18 @@ export default function Home() {
     (a, b) => parseFecha(a.fecha).getTime() - parseFecha(b.fecha).getTime()
   );
 
-  // Encontrar el próximo día con evento
-  const proximoDia =
+  // Encontrar el día más cercano a la fecha actual (pasado o futuro)
+  // (la selección inicial se hará tras cargar datos, ver useEffect más abajo)
+  const diaMasCercano =
     turnosOrdenados
       .map((d) => ({ ...d, fechaDate: parseFecha(d.fecha) }))
-      .filter((d) => d.fechaDate >= hoy)
-      .sort((a, b) => a.fechaDate.getTime() - b.fechaDate.getTime())[0]?.fecha ||
-    turnosOrdenados[0]?.fecha ||
-    new Date().toISOString().split("T")[0];
+      .sort(
+        (a, b) =>
+          Math.abs(a.fechaDate.getTime() - hoy.getTime()) -
+          Math.abs(b.fechaDate.getTime() - hoy.getTime())
+      )[0]?.fecha || turnosOrdenados[0]?.fecha;
 
-  const [diaSeleccionado, setDiaSeleccionado] = useState<string>(proximoDia);
+  const [diaSeleccionado, setDiaSeleccionado] = useState<string>("");
   const [spacerWidth, setSpacerWidth] = useState<number>(0);
   useEffect(() => {
     const updateSpacer = () => {
@@ -181,6 +183,25 @@ export default function Home() {
   const diaRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const diasConTurnos = [...turnosNormalizados]
+    .filter((d) => {
+      if (!selectedPerson) return true; // Mostrar todos si no hay filtro
+      return d.turnos.some((turno) => {
+        if (Array.isArray(turno.personas)) {
+          return (
+            turno.personas.includes(selectedPerson) ||
+            turno.personas.includes("Todos")
+          );
+        } else {
+          const { barra = [], puerta = [] } = turno.personas;
+          return (
+            barra.includes(selectedPerson) ||
+            puerta.includes(selectedPerson) ||
+            barra.includes("Todos") ||
+            puerta.includes("Todos")
+          );
+        }
+      });
+    })
     .sort((a, b) => parseFecha(a.fecha).getTime() - parseFecha(b.fecha).getTime())
     .map((d) => {
       const fechaObj = parseFecha(d.fecha);
@@ -191,19 +212,28 @@ export default function Home() {
       };
     });
 
-  const turnosDia = turnosNormalizados.find((d) => d.fecha === diaSeleccionado)?.turnos || [];
+  const turnosDia = turnosNormalizados.find((d) => d.fecha === diaSeleccionado);
+  const turnosFiltrados = turnosDia ? filtrarTurnos(turnosDia) : [];
 
+
+  // Seleccionar automáticamente el día más cercano a hoy solo una vez tras cargar los datos
   useEffect(() => {
-    if (turnosNormalizados.length > 0) {
-      const fechasDisponibles = diasConTurnos.map((d) => d.fecha);
-      if (!fechasDisponibles.includes(diaSeleccionado)) {
-        setDiaSeleccionado(turnosNormalizados[0].fecha);
+    if (turnosOrdenados.length > 0 && !diaSeleccionado) {
+      const hoyLocal = new Date();
+      const closest = turnosOrdenados
+        .map((d) => ({ fecha: d.fecha, fechaDate: parseFecha(d.fecha) }))
+        .sort(
+          (a, b) =>
+            Math.abs(a.fechaDate.getTime() - hoyLocal.getTime()) -
+            Math.abs(b.fechaDate.getTime() - hoyLocal.getTime())
+        )[0]?.fecha;
+      if (closest) {
+        setDiaSeleccionado(closest);
       }
     }
-    // Solo depende de turnosNormalizados (cambia al cargar datos) y del seleccionado actual
-    // para evitar bucles.
+    // Ejecutar solo una vez al cargar los datos iniciales
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [turnosNormalizados]);
+  }, [turnosOrdenados]);
 
   useEffect(() => {
     const contenedor = contenedorRef.current;
@@ -428,10 +458,10 @@ export default function Home() {
 
       {/* Lista de turnos del día */}
       <div className="px-6 pb-28 mt-6">
-        {turnosDia.length > 0 ? (
+        {turnosFiltrados.length > 0 ? (
           <div className="flex flex-col gap-6">
             {Object.entries(
-              turnosDia.reduce((acc, turno) => {
+              turnosFiltrados.reduce((acc, turno) => {
                 if (!acc[turno.actividad]) acc[turno.actividad] = [];
                 acc[turno.actividad].push(turno);
                 return acc;
