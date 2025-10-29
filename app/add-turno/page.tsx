@@ -17,12 +17,22 @@ export default function AddTurnoPage() {
     []
   );
   const [mostrarMenu, setMostrarMenu] = useState(false);
+  // Estados para eventos
+  const [eventos, setEventos] = useState<{ id: string; title: string; starts_at: string }[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<string>(""); // eventId seleccionado
+  // Para controlar si ya se ha seteado la horaInicio por evento seleccionado
+  const [eventoHoraAsignada, setEventoHoraAsignada] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/personas")
       .then((res) => res.json())
       .then((data) => setPersonasList(data))
       .catch((err) => console.error("Error al cargar personas:", err));
+    // Cargar eventos
+    fetch("/api/events")
+      .then((res) => res.json())
+      .then((data) => setEventos(data))
+      .catch((err) => console.error("Error al cargar eventos:", err));
   }, []);
 
   // Función para exportar los turnos a un Excel, con una hoja por mes
@@ -200,25 +210,40 @@ export default function AddTurnoPage() {
       alert("No hay turnos pendientes por guardar.");
       return;
     }
-
+    // Validación de evento existente
+    if (!selectedEvent) {
+      alert("Selecciona un evento.");
+      return;
+    }
     try {
-      const res = await fetch("/api/guardar-turnos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newTurnos: turnosPendientes }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Error al guardar los turnos");
+      for (const turno of turnosPendientes) {
+        const body: {
+          fecha: string;
+          horaInicio: string;
+          horaFin: string;
+          actividad: string;
+          personas: string[];
+          eventId?: string;
+        } = { ...turno };
+        if (selectedEvent) {
+          body.eventId = selectedEvent;
+        }
+        const res = await fetch("/api/turnos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Error al guardar uno de los turnos");
+        }
       }
-
-      alert(`✅ ${data.message}`);
+      alert(`✅ Se han guardado ${turnosPendientes.length} turnos correctamente.`);
       setTurnosPendientes([]);
+      setSelectedEvent("");
     } catch (err) {
       console.error("Error al confirmar turnos:", err);
-      alert("❌ Ocurrió un error al guardar los turnos en GitHub.");
+      alert("❌ Ocurrió un error al guardar los turnos en la base de datos.");
     }
   };
 
@@ -297,6 +322,70 @@ export default function AddTurnoPage() {
           onSubmit={handleAddTurnoPendiente}
           className="bg-white border border-[#E6E6EB] rounded-2xl shadow-sm p-6 flex flex-col gap-5"
         >
+          {/* Evento */}
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-[#7161EF]">
+              Evento
+            </label>
+            <select
+              value={selectedEvent}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSelectedEvent(value);
+                if (value && value !== "none") {
+                  const evento = eventos.find((ev) => ev.id.toString() === value);
+                  if (evento) {
+                    const eventoDate = new Date(evento.starts_at);
+                    const fechaEvento = eventoDate.toISOString().split("T")[0];
+                    const horaEvento = eventoDate.toLocaleTimeString("es-ES", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    });
+
+                    setFormData((prev) => ({
+                      ...prev,
+                      fecha: fechaEvento,
+                      horaInicio: prev.horaInicio || horaEvento,
+                    }));
+                    setEventoHoraAsignada(value);
+                  }
+                } else if (value === "") {
+                  setFormData((prev) => ({
+                    ...prev,
+                    fecha: "",
+                  }));
+                  setEventoHoraAsignada(null);
+                } else if (value === "none") {
+                  setFormData((prev) => ({
+                    ...prev,
+                    fecha: "",
+                  }));
+                  setEventoHoraAsignada(null);
+                }
+              }}
+              className="w-full bg-[#F9F9FB] border border-[#E6E6EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#7161EF]"
+            >
+              <option value="none">Sin evento</option>
+              <option value="">Selecciona evento</option>
+              {eventos.map((ev) => {
+                const fecha = new Date(ev.starts_at).toLocaleDateString("es-ES", {
+                  day: "2-digit",
+                  month: "short",
+                });
+                const hora = new Date(ev.starts_at).toLocaleTimeString("es-ES", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                return (
+                  <option key={ev.id} value={ev.id}>
+                    {`${ev.title} — ${fecha} ${hora}`}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
           {/* Fecha */}
           <div>
             <label className="block text-sm font-semibold mb-2 text-[#7161EF]">
@@ -307,7 +396,12 @@ export default function AddTurnoPage() {
               name="fecha"
               value={formData.fecha}
               onChange={handleChange}
-              className="w-full bg-[#F9F9FB] border border-[#E6E6EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#7161EF]"
+              className={`w-full border border-[#E6E6EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#7161EF] bg-[#F9F9FB] ${
+                selectedEvent !== "none" && selectedEvent !== ""
+                  ? "bg-gray-200 text-gray-600 cursor-not-allowed"
+                  : ""
+              }`}
+              disabled={selectedEvent !== "none" && selectedEvent !== ""}
             />
           </div>
 
@@ -397,6 +491,8 @@ export default function AddTurnoPage() {
               })}
             </div>
           </div>
+
+
 
           {/* Botones */}
           <div className="space-y-3 mt-2">

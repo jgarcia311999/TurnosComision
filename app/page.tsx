@@ -29,9 +29,29 @@ export default function Home() {
   const [mostrarMenu, setMostrarMenu] = useState<boolean>(false);
 
   useEffect(() => {
+    // Definir un tipo local para los turnos planos
+    interface TurnoPlano {
+      fecha: string;
+      horaInicio: string;
+      horaFin: string;
+      actividad: string;
+      personas: string[] | { barra?: string[]; puerta?: string[] };
+    }
     fetch("/api/turnos")
       .then((res) => res.json())
-      .then((data) => setTurnos(data))
+      .then((data: { fecha: string; turnos: Turno[] }[]) => {
+        const turnosAgrupados: Dia[] = data.map((item) => ({
+          fecha: item.fecha,
+          turnos: item.turnos.map((t) => ({
+            horaInicio: t.horaInicio,
+            horaFin: t.horaFin,
+            actividad: t.actividad,
+            personas: t.personas,
+          })),
+        }));
+
+        setTurnos(turnosAgrupados);
+      })
       .catch((err) => console.error("Error al cargar turnos:", err));
 
     fetch("/api/personas")

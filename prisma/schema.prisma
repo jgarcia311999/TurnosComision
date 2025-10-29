@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model events {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(200)
+  starts_at   DateTime @db.Timestamptz(6)
+  location    String   @db.VarChar(200)
+  provisional Boolean  @default(false)
+  attendees   Json?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  tags        Json?    @default("[]")
+  turnos      Turno[]
+}
+
+model idea_items {
+  id            Int           @id @default(autoincrement())
+  section_key   String        @db.VarChar(64)
+  text          String
+  created_at    DateTime      @default(now()) @db.Timestamptz(6)
+  idea_sections idea_sections @relation(fields: [section_key], references: [key], onDelete: Cascade, onUpdate: NoAction, map: "idea_items_section_key_idea_sections_key_fk")
+}
+
+model idea_sections {
+  key        String       @id @db.VarChar(64)
+  title      String       @db.VarChar(200)
+  idea_items idea_items[]
+}
+
+model users {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(100)
+  email      String?  @unique(map: "users_email_unique") @db.VarChar(191)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model Turno {
+  id         Int      @id @default(autoincrement())
+  fecha      DateTime
+  horaInicio String
+  horaFin    String
+  actividad  String
+  personas   String[]
+  createdAt  DateTime @default(now())
+  eventId    Int?     @map("event_id")
+  event      events?  @relation(fields: [eventId], references: [id])
+}
